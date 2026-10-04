@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <title>BudgetOS</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="app-icon" aria-hidden="true"></div>
+      <div class="brand-text">
+        <div class="brand-name">BudgetOS</div>
+        <div class="brand-sub">Локальный бюджет • офлайн</div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <select id="monthSelect" class="select"></select>
+      <button id="addRecordBtn" class="btn primary">+ Запись</button>
+      <button id="importBtn" class="btn">Импорт</button>
+      <button id="exportBtn" class="btn">Экспорт</button>
+      <button id="settingsBtn" class="btn icon" aria-label="Настройки">⚙︎</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button class="tab active" data-tab="overview" role="tab" aria-selected="true">Обзор</button>
+      <button class="tab" data-tab="categories" role="tab" aria-selected="false">Категории</button>
+      <button class="tab" data-tab="records" role="tab" aria-selected="false">Записи</button>
+    </nav>
+
+    <section id="overview" class="tab-content active">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Структура расходов</div>
+            <div class="card-sub">Доля от факта • по убыванию</div>
+          </div>
+          <label class="chip">
+            <input type="checkbox" id="hideTiny" />
+            <span>скрыть &lt; 1%</span>
+          </label>
+        </div>
+        <div id="expenseStructure" class="list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">План vs Факт</div>
+            <div class="card-sub">Топ-категории • прогресс факта к плану</div>
+          </div>
+          <div class="seg">
+            <button class="seg-btn active" id="pfTop8">Топ‑8</button>
+            <button class="seg-btn" id="pfAll">Все</button>
+          </div>
+        </div>
+        <div id="planFact" class="list"></div>
+      </div>
+    </section>
+
+    <section id="categories" class="tab-content">
+      <div class="summary">
+        <div class="summary-item">
+          <div class="k">План</div>
+          <div class="v"><span id="kpiPlan">0</span> <span class="u">BYN</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="k">Факт</div>
+          <div class="v"><span id="kpiFact">0</span> <span class="u">BYN</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="k">Остаток</div>
+          <div class="v"><span id="kpiRemain">0</span> <span class="u">BYN</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Категории месяца</div>
+            <div class="card-sub">Клик по “Оплачено” = факт становится равным плану</div>
+          </div>
+          <button id="addCategoryBtn" class="btn">+ Категория</button>
+        </div>
+
+        <div class="table">
+          <div class="thead">
+            <div>Категория</div>
+            <div class="num">План</div>
+            <div class="num">Факт</div>
+            <div class="num">Остаток</div>
+            <div class="center">Опл.</div>
+            <div class="center">⋯</div>
+          </div>
+          <div id="categoriesTable" class="tbody"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="records" class="tab-content">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Записи</div>
+            <div class="card-sub">Опционально: детализация факта</div>
+          </div>
+          <button id="addRecordBtn2" class="btn primary">+ Запись</button>
+        </div>
+        <div id="recordsList" class="records"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Import Modal -->
+  <div id="modalImport" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="importTitle">Импорт из заметок</div>
+          <div class="modal-sub">Вставьте текст (как у вас в заметках). Строки “Траты:” и “Доходы:” распознаются и служебные строки игнорируются.</div>
+        </div>
+        <button class="btn icon" data-close="modalImport" aria-label="Закрыть">✕</button>
+      </div>
+      <textarea id="importText" class="textarea" placeholder="Вставьте сюда месяц бюджета…"></textarea>
+      <div class="modal-actions">
+        <label class="chip">
+          <input type="checkbox" id="importMerge" />
+          <span>объединить с выбранным месяцем</span>
+        </label>
+        <div class="spacer"></div>
+        <button class="btn" data-close="modalImport">Отмена</button>
+        <button id="importDo" class="btn primary">Импортировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record Modal -->
+  <div id="modalRecord" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recordTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="recordTitle">Новая запись</div>
+          <div class="modal-sub">Добавит сумму к факту выбранной категории.</div>
+        </div>
+        <button class="btn icon" data-close="modalRecord" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="form">
+        <label class="field">
+          <div class="label">Категория</div>
+          <select id="recordCategory" class="select"></select>
+        </label>
+        <div class="row2">
+          <label class="field">
+            <div class="label">Сумма (BYN)</div>
+            <input id="recordAmount" class="input" type="number" inputmode="decimal" placeholder="0" />
+          </label>
+          <label class="field">
+            <div class="label">Дата</div>
+            <input id="recordDate" class="input" type="date" />
+          </label>
+        </div>
+        <label class="field">
+          <div class="label">Комментарий</div>
+          <input id="recordNote" class="input" type="text" placeholder="например: кофе, WB, аптека…" />
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <div class="spacer"></div>
+        <button class="btn" data-close="modalRecord">Отмена</button>
+        <button id="recordSave" class="btn primary">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Modal -->
+  <div id="modalCategory" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="catTitle">Новая категория</div>
+          <div class="modal-sub">Добавится в текущий месяц и в общий справочник категорий.</div>
+        </div>
+        <button class="btn icon" data-close="modalCategory" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="form">
+        <label class="field">
+          <div class="label">Название</div>
+          <input id="newCatName" class="input" type="text" placeholder="например: одежда" />
+        </label>
+        <label class="field">
+          <div class="label">План (BYN)</div>
+          <input id="newCatPlan" class="input" type="number" inputmode="decimal" placeholder="0" />
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <div class="spacer"></div>
+        <button class="btn" data-close="modalCategory">Отмена</button>
+        <button id="catSave" class="btn primary">Добавить</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
